@@ -79,6 +79,30 @@
             font-size: 0.9rem;
         }
 
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 120px;
+            /* Positioned to the left of the badge */
+            padding: 8px 15px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .logout-btn:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
         .admin-badge {
             background-color: var(--admin-blue);
         }

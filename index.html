@@ -19,6 +19,9 @@
                     <p class="tagline">Role-Based Food Ordering System</p>
                 </div>
             </div>
+            <button id="logoutBtn" class="logout-btn" style="display: none;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
             <div id="roleBadge" class="role-badge" style="display: none;"></div>
         </div>
     </header>
@@ -30,14 +33,14 @@
             <p>Select your role and enter credentials</p>
 
             <div class="role-selector">
-                <button class="role-btn admin" data-role="admin">
-                    <i class="fas fa-user-shield"></i> Admin
+                <button class="role-btn customer selected" data-role="customer">
+                    <i class="fas fa-user"></i> Customer
                 </button>
                 <button class="role-btn chef" data-role="chef">
                     <i class="fas fa-utensils"></i> Chef
                 </button>
-                <button class="role-btn customer selected" data-role="customer">
-                    <i class="fas fa-user"></i> Customer
+                <button class="role-btn admin" data-role="admin">
+                    <i class="fas fa-user-shield"></i> Admin
                 </button>
             </div>
 
