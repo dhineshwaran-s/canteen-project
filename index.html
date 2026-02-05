@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Canteen Management System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-utensils"></i>
+                <div>
+                    <h1>Campus Canteen</h1>
+                    <p class="tagline">Role-Based Food Ordering System</p>
+                </div>
+            </div>
+            <div id="roleBadge" class="role-badge" style="display: none;"></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Login Page -->
+        <div id="loginPage" class="login-page">
+            <h2><i class="fas fa-sign-in-alt"></i> Role-Based Login</h2>
+            <p>Select your role and enter credentials</p>
+
+            <div class="role-selector">
+                <button class="role-btn admin" data-role="admin">
+                    <i class="fas fa-user-shield"></i> Admin
+                </button>
+                <button class="role-btn chef" data-role="chef">
+                    <i class="fas fa-utensils"></i> Chef
+                </button>
+                <button class="role-btn customer selected" data-role="customer">
+                    <i class="fas fa-user"></i> Customer
+                </button>
+            </div>
+
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="userId" id="userIdLabel">Student ID</label>
+                    <input type="text" id="userId" placeholder="Enter your Student ID" maxlength="10">
+                </div>
+
+                <div id="adminPasswordGroup" class="form-group" style="display: none;">
+                    <label for="adminPassword">Admin Password</label>
+                    <input type="password" id="adminPassword" placeholder="Enter admin password">
+                </div>
+
+                <div id="chefPasswordGroup" class="form-group" style="display: none;">
+                    <label for="chefPassword">Chef Password</label>
+                    <input type="password" id="chefPassword" placeholder="Enter chef password">
+                </div>
+
+                <button id="loginBtn" class="login-btn">Login to System</button>
+
+                <div class="login-note">
+                    <p><strong>Demo Credentials:</strong></p>
+                    <p><strong>Admin:</strong> ID: ADMIN001 | Password: admin123</p>
+                    <p><strong>Chef:</strong> ID: CHEF001 | Password: chef123</p>
+                    <p><strong>Customer:</strong> Use any registered Student ID from college database</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Container -->
+        <div id="appContainer" class="app-container">
+            <!-- Navigation Tabs (Role-based) -->
+            <div class="nav-tabs" id="navTabs">
+                <!-- Customer Tabs -->
+                <button class="nav-tab customer-active active" data-tab="menu" data-role="customer">
+                    <i class="fas fa-utensils"></i> Menu & Order
+                </button>
+                <button class="nav-tab customer-active" data-tab="track" data-role="customer">
+                    <i class="fas fa-search"></i> Track Order
+                </button>
+                <button class="nav-tab customer-active" data-tab="history" data-role="customer">
+                    <i class="fas fa-history"></i> Order History
+                </button>
+
+                <!-- Chef Tabs -->
+                <button class="nav-tab chef-active" data-tab="chefOrders" data-role="chef" style="display: none;">
+                    <i class="fas fa-clipboard-list"></i> Kitchen Orders
+                </button>
+                <button class="nav-tab chef-active" data-tab="chefDashboard" data-role="chef" style="display: none;">
+                    <i class="fas fa-chart-line"></i> Chef Dashboard
+                </button>
+
+                <!-- Admin Tabs -->
+                <button class="nav-tab admin-active" data-tab="adminDashboard" data-role="admin" style="display: none;">
+                    <i class="fas fa-chart-line"></i> Admin Dashboard
+                </button>
+                <button class="nav-tab admin-active" data-tab="manageOrders" data-role="admin" style="display: none;">
+                    <i class="fas fa-shopping-bag"></i> Manage Orders
+                </button>
+                <button class="nav-tab admin-active" data-tab="manageUsers" data-role="admin" style="display: none;">
+                    <i class="fas fa-users"></i> Manage Users
+                </button>
+                <button class="nav-tab admin-active" data-tab="systemReports" data-role="admin" style="display: none;">
+                    <i class="fas fa-chart-pie"></i> System Reports
+                </button>
+            </div>
+
+            <!-- Health Alert for Customers -->
+            <div id="healthAlert" class="health-alert">
+                <h4><i class="fas fa-heartbeat"></i> Health Alert!</h4>
+                <p id="healthAlertMessage">You have ordered junk food multiple times continuously. Consider ordering
+                    vegetarian or healthy food today for a healthier choice.</p>
+            </div>
+
+            <!-- Customer: Menu & Order Tab -->
+            <div id="menuTab" class="tab-content">
+                <div class="menu-page">
+                    <!-- Menu Section -->
+                    <div class="menu-section">
+                        <div class="page-title">
+                            <h2><i class="fas fa-utensils"></i> Today's Menu</h2>
+                            <div class="user-info">
+                                <i class="fas fa-user"></i> Welcome, <span id="displayUserId">User</span>
+                            </div>
+                        </div>
+
+                        <!-- Food Recommendations -->
+                        <div id="recommendationPanel" class="recommendation-panel" style="display: none;">
+                            <h3><i class="fas fa-lightbulb"></i> Recommended For You</h3>
+                            <p id="recommendationText">Based on your order history, we recommend trying our healthy
+                                options today!</p>
+                            <div id="recommendedItems" class="menu-items"
+                                style="margin-top: 15px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                                <!-- Recommended items will be dynamically added here -->
+                            </div>
+                        </div>
+
+                        <div class="menu-categories" id="menuContainer">
+                            <!-- Menu items will be dynamically added here -->
+                        </div>
+                    </div>
+
+                    <!-- Cart and Order Section -->
+                    <div class="cart-section">
+                        <div class="cart-summary">
+                            <h3><i class="fas fa-shopping-cart"></i> Your Order</h3>
+
+                            <!-- Cart Items -->
+                            <div class="cart-items" id="cartItems">
+                                <p id="emptyCartMessage">Your cart is empty. Add items from the menu above.</p>
+                            </div>
+
+                            <!-- Cart Total -->
+                            <div class="cart-total">
+                                <span>Total:</span>
+                                <span id="cartTotal">₹0</span>
+                            </div>
+
+                            <!-- Place Order Button -->
+                            <button id="placeOrderBtn" class="place-order-btn" disabled>
+                                <i class="fas fa-paper-plane"></i> Place Order
+                            </button>
+                        </div>
+
+                        <!-- Notifications for Customer -->
+                        <div class="notifications-panel">
+                            <h3><i class="fas fa-bell"></i> Order Notifications</h3>
+                            <div id="customerNotifications">
+                                <div class="notification customer">
+                                    <p>Welcome! You'll receive notifications about your orders here.</p>
+                                    <div class="notification-time">Just now</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer: Track Order Tab -->
+            <div id="trackTab" class="tab-content dashboard">
+                <h2><i class="fas fa-search"></i> Track Your Order</h2>
+
+                <div class="order-options" style="margin-bottom: 30px;">
+                    <div class="option-title">Enter Order Number</div>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="trackOrderInput" placeholder="Enter your order number (e.g., CANT-001)"
+                            style="flex: 1; padding: 12px; border: 2px solid var(--medium-gray); border-radius: 8px;">
+                        <button id="trackOrderBtn" class="action-btn btn-view">Track</button>
+                    </div>
+                </div>
+
+                <div id="trackOrderResult"
+                    style="background-color: var(--light-gray); padding: 25px; border-radius: 10px; display: none;">
+                    <h3>Order Status</h3>
+                    <div class="order-details" style="margin-top: 15px;">
+                        <div class="order-detail-row" style="display: flex; margin-bottom: 10px;">
+                            <div style="font-weight: 600; width: 180px; color: var(--dark-gray);">Order Number:</div>
+                            <div style="flex: 1; color: #333;" id="trackOrderId">-</div>
+                        </div>
+                        <div class="order-detail-row" style="display: flex; margin-bottom: 10px;">
+                            <div style="font-weight: 600; width: 180px; color: var(--dark-gray);">Status:</div>
+                            <div style="flex: 1; color: #333;" id="trackOrderStatus">-</div>
+                        </div>
+                        <div class="order-detail-row" style="display: flex; margin-bottom: 10px;">
+                            <div style="font-weight: 600; width: 180px; color: var(--dark-gray);">Items:</div>
+                            <div style="flex: 1; color: #333;" id="trackOrderItems">-</div>
+                        </div>
+                        <div class="order-detail-row" style="display: flex; margin-bottom: 10px;">
+                            <div style="font-weight: 600; width: 180px; color: var(--dark-gray);">Total:</div>
+                            <div style="flex: 1; color: #333;" id="trackOrderTotal">-</div>
+                        </div>
+                        <div class="order-detail-row" style="display: flex; margin-bottom: 10px;">
+                            <div style="font-weight: 600; width: 180px; color: var(--dark-gray);">Estimated Ready:</div>
+                            <div style="flex: 1; color: #333;" id="trackOrderReady">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="trackOrderMessage" style="text-align: center; padding: 40px; color: var(--dark-gray);">
+                    <i class="fas fa-search"
+                        style="font-size: 3rem; margin-bottom: 15px; color: var(--medium-gray);"></i>
+                    <p>Enter your order number above to track your order status</p>
+                </div>
+            </div>
+
+            <!-- Customer: Order History Tab -->
+            <div id="historyTab" class="tab-content dashboard">
+                <h2><i class="fas fa-history"></i> Your Order History</h2>
+
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Date</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerOrderHistory">
+                        <!-- Order history will be dynamically added here -->
+                    </tbody>
+                </table>
+
+                <div id="noOrderHistory" style="text-align: center; padding: 40px; color: var(--dark-gray);">
+                    <i class="fas fa-history"
+                        style="font-size: 3rem; margin-bottom: 15px; color: var(--medium-gray);"></i>
+                    <p>You haven't placed any orders yet.</p>
+                </div>
+            </div>
+
+            <!-- Chef: Kitchen Orders Tab -->
+            <div id="chefOrdersTab" class="tab-content dashboard">
+                <h2><i class="fas fa-clipboard-list"></i> Kitchen Orders</h2>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card chef">
+                        <h3><i class="fas fa-clock"></i> Pending Orders</h3>
+                        <div class="stat chef" id="pendingOrdersCount">0</div>
+                        <p>Orders waiting for preparation</p>
+                    </div>
+
+                    <div class="dashboard-card chef">
+                        <h3><i class="fas fa-fire"></i> Preparing Now</h3>
+                        <div class="stat chef" id="preparingOrdersCount">0</div>
+                        <p>Orders currently being prepared</p>
+                    </div>
+
+                    <div class="dashboard-card chef">
+                        <h3><i class="fas fa-check-circle"></i> Completed Today</h3>
+                        <div class="stat chef" id="completedOrdersCount">0</div>
+                        <p>Orders completed today</p>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 30px;">Current Orders</h3>
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer ID</th>
+                            <th>Items</th>
+                            <th>Time Placed</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chefOrdersTable">
+                        <!-- Chef orders will be dynamically added here -->
+                    </tbody>
+                </table>
+
+                <!-- Notifications for Chef -->
+                <div class="notifications-panel" style="margin-top: 30px;">
+                    <h3><i class="fas fa-bell"></i> Kitchen Notifications</h3>
+                    <div id="chefNotifications">
+                        <div class="notification chef">
+                            <p>New orders will appear here. Update status when prepared.</p>
+                            <div class="notification-time">System</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chef: Dashboard Tab -->
+            <div id="chefDashboardTab" class="tab-content dashboard">
+                <h2><i class="fas fa-chart-line"></i> Chef Dashboard</h2>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card chef">
+                        <h3><i class="fas fa-utensils"></i> Most Ordered Items</h3>
+                        <ol id="chefPopularItems" style="padding-left: 20px; margin-top: 10px;">
+                            <!-- Popular items will be dynamically added here -->
+                        </ol>
+                    </div>
+
+                    <div class="dashboard-card chef">
+                        <h3><i class="fas fa-bolt"></i> Preparation Time</h3>
+                        <div class="stat chef" id="avgPrepTime">0 min</div>
+                        <p>Average preparation time</p>
+                    </div>
+
+                    <div class="dashboard-card chef">
+                        <h3><i class="fas fa-chart-bar"></i> Today's Performance</h3>
+                        <div class="stat chef" id="ordersPerHour">0</div>
+                        <p>Orders per hour</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin: Dashboard Tab -->
+            <div id="adminDashboardTab" class="tab-content dashboard">
+                <h2><i class="fas fa-chart-line"></i> Admin Dashboard</h2>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card admin">
+                        <h3><i class="fas fa-shopping-bag"></i> Today's Orders</h3>
+                        <div class="stat admin" id="adminTodayOrders">0</div>
+                        <p>Total orders placed today</p>
+                    </div>
+
+                    <div class="dashboard-card admin">
+                        <h3><i class="fas fa-users"></i> Active Users</h3>
+                        <div class="stat admin" id="activeUsersCount">0</div>
+                        <p>Users who ordered today</p>
+                    </div>
+
+                    <div class="dashboard-card admin">
+                        <h3><i class="fas fa-rupee-sign"></i> Today's Revenue</h3>
+                        <div class="stat admin" id="todayRevenue">₹0</div>
+                        <p>Total revenue generated</p>
+                    </div>
+
+                    <div class="dashboard-card admin">
+                        <h3><i class="fas fa-utensils"></i> Kitchen Efficiency</h3>
+                        <div class="stat admin" id="kitchenEfficiency">0%</div>
+                        <p>Orders prepared on time</p>
+                    </div>
+                </div>
+
+                <!-- Notifications for Admin -->
+                <div class="notifications-panel" style="margin-top: 30px;">
+                    <h3><i class="fas fa-bell"></i> System Notifications</h3>
+                    <div id="adminNotifications">
+                        <div class="notification admin">
+                            <p>System notifications will appear here.</p>
+                            <div class="notification-time">System</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin: Manage Orders Tab -->
+            <div id="manageOrdersTab" class="tab-content dashboard">
+                <h2><i class="fas fa-shopping-bag"></i> Manage All Orders</h2>
+
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer ID</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminOrdersTable">
+                        <!-- All orders will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Admin: Manage Users Tab -->
+            <div id="manageUsersTab" class="tab-content dashboard">
+                <h2><i class="fas fa-users"></i> Manage Users</h2>
+
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Email</th>
+                            <th>Total Orders</th>
+                            <th>Last Order</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTable">
+                        <!-- Users will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Admin: System Reports Tab -->
+            <div id="systemReportsTab" class="tab-content dashboard">
+                <h2><i class="fas fa-chart-pie"></i> System Reports</h2>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card admin">
+                        <h3><i class="fas fa-chart-bar"></i> Order Trends</h3>
+                        <canvas id="orderTrendsChart" width="300" height="200" style="max-width: 100%;"></canvas>
+                    </div>
+
+                    <div class="dashboard-card admin">
+                        <h3><i class="fas fa-chart-pie"></i> Category Distribution</h3>
+                        <canvas id="categoryChart" width="300" height="200" style="max-width: 100%;"></canvas>
+                    </div>
+
+                    <div class="dashboard-card admin">
+                        <h3><i class="fas fa-clock"></i> Peak Hours</h3>
+                        <canvas id="peakHoursChart" width="300" height="200" style="max-width: 100%;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>Campus Canteen Management System &copy; 2026 | Role-Based Access Control</p>
+            <p>College ID: KIT College of Engineering | System Version 2.0</p>
+        </div>
+    </footer>
+
+    <!-- Chart.js for Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
