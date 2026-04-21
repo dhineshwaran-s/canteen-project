@@ -7,11 +7,11 @@ const collegeDatabase = {
     "711524001": { name: "Akshay", email: "rahul.sharma@abccollege.edu", department: "CSE", year: "3rd" },
     "711524002": { name: "Dhineshwaran", email: "dhinesh@kitcollege.edu", department: "ECE", year: "2nd" },
     "711524003": { name: "Ratul", email: "ratul@kitcollege.edu", department: "ME", year: "4th" },
-    "711524004": { name: "Sneha", email: "sneha@kitcollege.edu", department: "CSE", year: "1st" },
+    "711524004": { name: "siva", email: "siva@kitcollege.edu", department: "CSE", year: "1st" },
     "711524005": { name: "Vikram", email: "vikram@kitcollege.edu", department: "EEE", year: "3rd" },
     "711524006": { name: "Sanjai", email: "sanjai@kitcollege.edu", department: "CE", year: "2nd" },
     "711524007": { name: "Lokesh", email: "lokesh@kitcollege.edu", department: "CSE", year: "4th" },
-    "711524008": { name: "Girija", email: "girija@kitcollege.edu", department: "ECE", year: "1st" }
+    "711524008": { name: "vishnu", email: "vishnu@kitcollege.edu", department: "ECE", year: "1st" }
 };
 
 // Admin and Chef Credentials
@@ -67,6 +67,66 @@ let notifications = [];
 let userOrderHistory = {};
 let currentOrderId = 100;
 
+// =============================
+// BACKEND INTEGRATION
+// =============================
+const API_URL = 'http://localhost:5000/api';
+let authToken = '';
+const socket = io('http://localhost:5000');
+
+socket.on('newOrder', (order) => {
+    if (currentRole === 'chef' || currentRole === 'admin') {
+        fetchOrders();
+    }
+});
+
+socket.on('orderStatusUpdated', (order) => {
+    fetchOrders();
+    if (currentRole === 'customer') {
+        addNotification('customer', `Your order status was updated`, new Date());
+        loadCustomerNotifications();
+    }
+});
+
+async function fetchOrders() {
+    if (!authToken) return;
+    try {
+        const res = await fetch(`${API_URL}/orders`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            orders = data.map(o => ({
+                id: o.orderId || o._id,
+                _id: o._id, // Keep mongo ID just in case
+                customerId: currentRole === 'customer' ? currentUser.id : o.user,
+                customerName: 'Student', // Ideally fetched from populated user
+                items: o.orderItems,
+                total: o.totalPrice,
+                status: o.status.toLowerCase(),
+                timestamp: o.createdAt,
+                healthType: 'normal'
+            }));
+
+            // Rebuild history
+            userOrderHistory = {};
+            orders.forEach(order => {
+                if (!userOrderHistory[order.customerId]) {
+                    userOrderHistory[order.customerId] = [];
+                }
+                userOrderHistory[order.customerId].push(order);
+            });
+
+            // Refresh UI
+            if (currentRole === 'chef') loadChefOrders();
+            if (currentRole === 'admin') { loadAdminDashboard(); loadManageOrders(); }
+            if (currentRole === 'customer') { loadCustomerOrderHistory(); checkHealthAlert(); loadRecommendations(); }
+        }
+    } catch (err) {
+        console.error('Error fetching orders:', err);
+    }
+}
+
 // Sample initial orders for demonstration
 const initialOrders = [
     {
@@ -75,7 +135,7 @@ const initialOrders = [
         customerName: "Rahul Sharma",
         items: [{ id: 6, name: "Samosa", price: 30, quantity: 2 }, { id: 7, name: "Burger", price: 80, quantity: 1 }],
         total: 140,
-        status: "completed",
+        status: "delivered",
         timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
         healthType: "junk"
     },
@@ -85,7 +145,7 @@ const initialOrders = [
         customerName: "Rahul Sharma",
         items: [{ id: 8, name: "French Fries", price: 60, quantity: 1 }, { id: 9, name: "Pizza Slice", price: 90, quantity: 2 }],
         total: 240,
-        status: "completed",
+        status: "delivered",
         timestamp: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
         healthType: "junk"
     },
@@ -95,7 +155,7 @@ const initialOrders = [
         customerName: "Rahul Sharma",
         items: [{ id: 6, name: "Samosa", price: 30, quantity: 3 }, { id: 15, name: "Cold Coffee", price: 80, quantity: 1 }],
         total: 170,
-        status: "completed",
+        status: "delivered",
         timestamp: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
         healthType: "junk"
     },
@@ -115,7 +175,7 @@ const initialOrders = [
         customerName: "Amit Kumar",
         items: [{ id: 1, name: "Butter Chicken", price: 220, quantity: 1 }, { id: 3, name: "Chicken Biryani", price: 200, quantity: 1 }],
         total: 420,
-        status: "placed",
+        status: "pending",
         timestamp: new Date().toISOString(),
         healthType: "normal"
     }
@@ -242,8 +302,13 @@ function handleLogout() {
 }
 
 // Handle login with validation
-function handleLogin() {
+async function handleLogin() {
     const userId = userIdInput.value.trim().toUpperCase();
+
+    let dummyEmail = '';
+    let dummyName = '';
+    let dummyPass = '';
+    let backendRole = '';
 
     if (currentRole === 'customer') {
         // Customer login - validate against college database
@@ -257,6 +322,11 @@ function handleLogin() {
             name: collegeDatabase[userId].name,
             role: 'customer'
         };
+
+        dummyEmail = collegeDatabase[userId].email;
+        dummyName = collegeDatabase[userId].name;
+        dummyPass = 'student123';
+        backendRole = 'Customer';
 
         showAlert(`Welcome ${collegeDatabase[userId].name}!`, "success");
 
@@ -278,6 +348,11 @@ function handleLogin() {
             role: 'admin'
         };
 
+        dummyEmail = 'admin@system.com';
+        dummyName = systemUsers[userId].name;
+        dummyPass = adminPassword.value;
+        backendRole = 'Admin';
+
         showAlert(`Welcome Admin ${systemUsers[userId].name}!`, "success");
 
     } else if (currentRole === 'chef') {
@@ -298,7 +373,39 @@ function handleLogin() {
             role: 'chef'
         };
 
+        dummyEmail = 'chef@system.com';
+        dummyName = systemUsers[userId].name;
+        dummyPass = chefPassword.value;
+        backendRole = 'Chef';
+
         showAlert(`Welcome Chef ${systemUsers[userId].name}!`, "success");
+    }
+
+    try {
+        // Sync with backend
+        let res = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: dummyEmail, password: dummyPass })
+        });
+
+        let data = await res.json();
+
+        if (!res.ok) {
+            res = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: dummyName, email: dummyEmail, password: dummyPass, role: backendRole })
+            });
+            data = await res.json();
+        }
+
+        if (data.token) {
+            authToken = data.token;
+            await fetchOrders(); // load orders from DB
+        }
+    } catch (err) {
+        console.error('Backend auth failed:', err);
     }
 
     // Update UI based on role
@@ -661,7 +768,7 @@ function updateCartDisplay() {
 }
 
 // Place order
-function placeOrder() {
+async function placeOrder() {
     if (cart.length === 0) {
         showAlert("Your cart is empty. Add items before placing an order.", "warning");
         return;
@@ -686,19 +793,41 @@ function placeOrder() {
         customerName: currentUser.name,
         items: [...cart],
         total: total,
-        status: 'placed',
+        status: 'pending',
         timestamp: new Date().toISOString(),
         healthType: healthType
     };
 
-    // Save order
+    // Push local first for instant feedback
     orders.push(order);
-
-    // Update user order history
-    if (!userOrderHistory[currentUser.id]) {
-        userOrderHistory[currentUser.id] = [];
-    }
+    if (!userOrderHistory[currentUser.id]) userOrderHistory[currentUser.id] = [];
     userOrderHistory[currentUser.id].push(order);
+
+    // Push to Backend
+    try {
+        const orderItems = cart.map(item => ({
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image || ''
+        }));
+
+        if (authToken) {
+            const res = await fetch(`${API_URL}/orders`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ orderId, orderItems, totalPrice: total })
+            });
+            if (res.ok) {
+                await fetchOrders();
+            }
+        }
+    } catch (err) {
+        console.error('Backend order fallback:', err);
+    }
 
     // Add notification for customer
     addNotification('customer', `Order ${orderId} placed successfully!`, new Date());
@@ -764,14 +893,17 @@ function loadCustomerNotifications() {
         let time = new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         switch (order.status) {
-            case 'placed':
-                message = `Order ${order.id} placed`;
+            case 'pending':
+                message = `Waiting for chef`;
                 break;
             case 'preparing':
-                message = `Order ${order.id} is being prepared`;
+                message = `Preparing your food`;
                 break;
-            case 'completed':
-                message = `Order ${order.id} is ready for pickup`;
+            case 'ready':
+                message = `Your food is ready`;
+                break;
+            case 'delivered':
+                message = `Order completed`;
                 break;
         }
 
@@ -819,12 +951,20 @@ function loadCustomerOrderHistory() {
         const itemsText = order.items.map(item => `${item.quantity}x ${item.name}`).join(', ');
         const date = new Date(order.timestamp).toLocaleDateString();
 
+        const statusMap = {
+            'pending': 'Waiting for chef',
+            'preparing': 'Preparing your food',
+            'ready': 'Your food is ready',
+            'delivered': 'Order completed'
+        };
+        const displayStatus = statusMap[order.status.toLowerCase()] || order.status;
+
         row.innerHTML = `
                     <td>${order.id}</td>
                     <td>${date}</td>
                     <td>${itemsText}</td>
                     <td>₹${order.total}</td>
-                    <td><span class="order-status status-${order.status}">${order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span></td>
+                    <td><span class="order-status status-${order.status.toLowerCase()}">${displayStatus}</span></td>
                 `;
         customerOrderHistory.appendChild(row);
     });
@@ -845,10 +985,10 @@ function loadChefOrders() {
 
     chefOrdersTable.innerHTML = '';
 
-    // Filter orders that are placed or preparing
-    const kitchenOrders = orders.filter(order => order.status === 'placed' || order.status === 'preparing');
+    // Filter orders that are pending or preparing
+    const kitchenOrders = orders.filter(order => order.status === 'pending' || order.status === 'preparing');
     const preparingOrders = orders.filter(order => order.status === 'preparing');
-    const completedOrders = orders.filter(order => order.status === 'completed');
+    const completedOrders = orders.filter(order => order.status === 'ready' || order.status === 'delivered');
 
     // Update counts
     if (pendingOrdersCount) pendingOrdersCount.textContent = kitchenOrders.length;
@@ -868,9 +1008,9 @@ function loadChefOrders() {
                     <td>${time}</td>
                     <td><span class="order-status status-${order.status}">${order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span></td>
                     <td>
-                        ${order.status === 'placed' ?
+                        ${order.status === 'pending' ?
                 `<button class="action-btn btn-update" onclick="updateOrderStatus('${order.id}', 'preparing')">Start Preparing</button>` :
-                `<button class="action-btn btn-update" onclick="updateOrderStatus('${order.id}', 'completed')">Mark Completed</button>`
+                `<button class="action-btn btn-update" onclick="updateOrderStatus('${order.id}', 'ready')">Mark as Ready</button>`
             }
                     </td>
                 `;
@@ -886,19 +1026,48 @@ function loadChefOrders() {
 }
 
 // Update order status (for chef)
-function updateOrderStatus(orderId, newStatus) {
+async function updateOrderStatus(orderId, newStatus) {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
     const oldStatus = order.status;
     order.status = newStatus;
 
+    // Push to backend
+    if (authToken) {
+        try {
+            let endpoint = '';
+            if (newStatus === 'preparing') endpoint = 'prepare';
+            if (newStatus === 'ready') endpoint = 'ready';
+            if (newStatus === 'delivered') endpoint = 'deliver';
+
+            // Find backend internal Mongo _id for API call since track order uses the friendly id
+            const backendId = order._id || order.id;
+
+            const res = await fetch(`${API_URL}/orders/${backendId}/${endpoint}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+
+            if (res.ok) {
+                await fetchOrders();
+                return; // fetchOrders will refresh UI and show alerts properly via socket
+            }
+        } catch (err) {
+            console.error('Failed to update backend status:', err);
+        }
+    }
+
     // Add notification for customer
     let customerMessage = '';
     if (newStatus === 'preparing') {
-        customerMessage = `Order ${orderId} is now being prepared`;
-    } else if (newStatus === 'completed') {
-        customerMessage = `Order ${orderId} is ready for pickup`;
+        customerMessage = `Preparing your food`;
+    } else if (newStatus === 'ready') {
+        customerMessage = `Your food is ready`;
+    } else if (newStatus === 'delivered') {
+        customerMessage = `Order completed`;
     }
 
     if (customerMessage) {
@@ -983,8 +1152,8 @@ function loadAdminDashboard() {
     // Calculate total revenue
     const revenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
 
-    // Calculate kitchen efficiency (orders completed on time)
-    const completedOrders = orders.filter(order => order.status === 'completed');
+    // Calculate kitchen efficiency (orders delivered/ready instead of completed)
+    const completedOrders = orders.filter(order => order.status === 'ready' || order.status === 'delivered');
     const efficiency = completedOrders.length > 0 ?
         Math.round((completedOrders.length / orders.length) * 100) : 0;
 
@@ -1290,7 +1459,7 @@ window.trackOrder = function () {
     const orderTime = new Date(order.timestamp);
     let readyTime = new Date(orderTime);
 
-    if (order.status === 'placed') {
+    if (order.status === 'pending') {
         readyTime.setMinutes(readyTime.getMinutes() + 25);
     } else if (order.status === 'preparing') {
         readyTime.setMinutes(readyTime.getMinutes() + 15);
@@ -1299,7 +1468,7 @@ window.trackOrder = function () {
     }
 
     const readyTimeText = readyTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    trackOrderReady.textContent = order.status === 'completed' ? 'Ready for pickup' : `${readyTimeText}`;
+    trackOrderReady.textContent = (order.status === 'ready' || order.status === 'delivered') ? 'Ready for pickup' : `${readyTimeText}`;
 
     // Show result
     trackOrderResult.style.display = 'block';
@@ -1309,7 +1478,7 @@ window.trackOrder = function () {
     const statusElement = trackOrderStatus;
     statusElement.style.fontWeight = 'bold';
 
-    if (order.status === 'completed') {
+    if (order.status === 'ready' || order.status === 'delivered') {
         statusElement.style.color = "var(--success-green)";
     } else if (order.status === 'preparing') {
         statusElement.style.color = "var(--warning-yellow)";
